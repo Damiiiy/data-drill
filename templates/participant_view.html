@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>{{ role }} Portal</h1>
+        <div id="status-indicator" class="role-badge">Waiting for connection...</div>
+    </div>
+
+    <div id="alerts-container" style="margin-top: 2rem;">
+        <div class="card" style="text-align: center; border: 1px dashed var(--text-muted);">
+            <p style="color: var(--text-muted);">No active alerts. Monitoring server...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const role = "{{ role }}";
+    let activeAlertId = null;
+
+    function checkUpdates() {
+        fetch(`{% url 'check_updates' %}?role=${role}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('status-indicator').innerText = data.status;
+                
+                if (data.triggers.length > 0) {
+                    const trigger = data.triggers[0];
+                    if (activeAlertId !== trigger.id) {
+                        renderAlert(trigger);
+                        activeAlertId = trigger.id;
+                    } else {
+                        updateCountdown(trigger.time_left);
+                    }
+                } else {
+                    document.getElementById('alerts-container').innerHTML = `
+                        <div class="card" style="text-align: center; border: 1px dashed var(--text-muted);">
+                            <p style="color: var(--text-muted);">No active alerts. Monitoring server...</p>
+                        </div>
+                    `;
+                    activeAlertId = null;
+                }
+            });
+    }
+
+    function renderAlert(trigger) {
+        document.getElementById('alerts-container').innerHTML = `
+            <div class="card alert-card">
+                <div style="display: flex; justify-content: space-between;">
+                    <h3 style="color: var(--danger);">CRITICAL ALERT</h3>
+                    <div id="countdown-${trigger.id}" class="timer" style="font-size: 1.5rem;">${trigger.time_left}s</div>
+                </div>
+                <p style="font-size: 1.25rem; margin: 1rem 0;">${trigger.message}</p>
+                <hr style="border: 0.5px solid rgba(255,255,255,0.1); margin: 1.5rem 0;">
+                <p><strong>Decision Required:</strong> ${trigger.prompt}</p>
+                <div class="grid" style="margin-top: 1rem;">
+                    <button onclick="submitDecision(${trigger.id}, 'YES')" class="btn btn-primary">YES</button>
+                    <button onclick="submitDecision(${trigger.id}, 'NO')" class="btn btn-outline">NO</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function updateCountdown(timeLeft) {
+        const el = document.getElementById(`countdown-${activeAlertId}`);
+        if (el) el.innerText = timeLeft + 's';
+    }
+
+    function submitDecision(eventId, decision) {
+        fetch('{% url "submit_decision" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ event_id: eventId, decision: decision })
+        }).then(() => {
+            activeAlertId = null;
+            checkUpdates();
+        });
+    }
+
+    setInterval(checkUpdates, 1000);
+</script>
+{% endblock %}

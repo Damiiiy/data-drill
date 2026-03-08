@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load simulation_extras %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Trainer Dashboard</h1>
+        <div>
+            {% if sim.status == 'READY' %}
+                <a href="{% url 'start_simulation' %}" class="btn btn-primary">Start Drill</a>
+            {% elif sim.status == 'RUNNING' or sim.status == 'PAUSED' %}
+                <a href="{% url 'pause_resume_simulation' %}" class="btn btn-outline">
+                    {% if sim.status == 'RUNNING' %}Pause{% else %}Resume{% endif %}
+                </a>
+                <a href="{% url 'reset_simulation' %}" class="btn btn-outline" style="border-color: var(--danger); color: var(--danger);">Reset</a>
+                <a href="{% url 'report_view' %}" class="btn btn-danger">End & View Report</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card" style="margin-top: 1rem; text-align: center;">
+        <div class="text-muted">Simulated Elapsed Time</div>
+        <div id="sim-timer" class="timer">00:00</div>
+        <div id="status-badge" class="role-badge" style="text-transform: uppercase;">{{ sim.status }}</div>
+    </div>
+
+    <h3>Events Schedule</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="text-align: left; border-bottom: 1px solid var(--text-muted);">
+                <th style="padding: 1rem;">Time</th>
+                <th style="padding: 1rem;">Role</th>
+                <th style="padding: 1rem;">Status</th>
+            </tr>
+        </thead>
+        <tbody id="events-table">
+            {% for event in events %}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 1rem;">{{ event.trigger_time_ms|divideby:60000 }}:00</td>
+                <td style="padding: 1rem;">{{ event.role }}</td>
+                <td style="padding: 1rem;" id="event-status-{{ event.id }}">Pending</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    function updateTimer() {
+        fetch('{% url "check_updates" %}?role=TRAINER')
+            .then(r => r.json())
+            .then(data => {
+                const totalSeconds = Math.floor(data.sim_time / 1000);
+                const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                const secs = (totalSeconds % 60).toString().padStart(2, '0');
+                document.getElementById('sim-timer').innerText = `${mins}:${secs}`;
+                
+                document.getElementById('status-badge').innerText = data.status;
+                
+                if (data.event_statuses) {
+                    data.event_statuses.forEach(ev => {
+                        const el = document.getElementById(`event-status-${ev.id}`);
+                        if (el) {
+                            el.innerText = ev.status;
+                            if (ev.status === 'YES') el.style.color = 'var(--success)';
+                            if (ev.status === 'NO' || ev.status === 'Missed') el.style.color = 'var(--danger)';
+                        }
+                    });
+                }
+            });
+    }
+    
+    setInterval(updateTimer, 1000);
+</script>
+{% endblock %}

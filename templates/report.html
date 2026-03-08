@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load simulation_extras %}
+
+{% block content %}
+<div class="card" id="report">
+    <div style="text-align: center;">
+        <h1>Simulation Summary Report</h1>
+        <div class="role-badge" style="background: var(--primary); font-size: 1.5rem; padding: 0.5rem 2rem;">
+            Outcome: {{ outcome }}
+        </div>
+    </div>
+
+    <div style="margin-top: 3rem;">
+        <h3>Detailed Responses</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 2px solid var(--text-muted);">
+                    <th style="padding: 1rem;">Time</th>
+                    <th style="padding: 1rem;">Role</th>
+                    <th style="padding: 1rem;">Message</th>
+                    <th style="padding: 1rem;">Decision</th>
+                    <th style="padding: 1rem;">Timing</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for resp in responses %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 1rem;">{{ resp.event.trigger_time_ms|divideby:60000 }}:00</td>
+                    <td style="padding: 1rem;"><strong>{{ resp.event.role }}</strong></td>
+                    <td style="padding: 1rem; color: var(--text-muted); font-size: 0.875rem;">{{ resp.event.message }}</td>
+                    <td style="padding: 1rem;">
+                        {% if resp.is_missed %}
+                            <span style="color: var(--danger);">MISSED</span>
+                        {% else %}
+                            <span style="{{ resp.choice|yesno:'color: var(--success),color: var(--danger)' }}">
+                                {{ resp.choice|yesno:"YES,NO" }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem;">
+                        {% if resp.responded_at_ms %}
+                            +{{ resp.responded_at_ms|subtract:resp.event.trigger_time_ms|divideby:1000 }}s
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 3rem; text-align: center;">
+        <button onclick="window.print()" class="btn btn-outline">Print Report</button>
+        <a href="{% url 'reset_simulation' %}" class="btn btn-primary">Start New Drill</a>
+    </div>
+</div>
+{% endblock %}
