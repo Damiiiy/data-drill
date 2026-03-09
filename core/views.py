@@ -147,7 +147,7 @@ def report_view(request):
     sim = Simulation.objects.get(id=1)
     responses = SimulationResponse.objects.filter(simulation=sim).select_related('event')
     
-    # Outcome logic
+    # the outcome logic
     it_esc = responses.filter(event__role='IT', choice=True).exists()
     legal_not = responses.filter(event__role='LEGAL', choice=True).exists()
     any_missed = responses.filter(is_missed=True).exists()
