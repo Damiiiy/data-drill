@@ -6,7 +6,6 @@ class Simulation(models.Model):
         ('READY', 'Ready'),
         ('RUNNING', 'Running'),
         ('PAUSED', 'Paused'),
-        ('FINISHED', 'Finished'),
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='READY')
     start_time = models.DateTimeField(null=True, blank=True)
@@ -16,7 +15,10 @@ class Simulation(models.Model):
     def current_sim_time_ms(self):
         if self.status == 'RUNNING':
             now = timezone.now()
-            delta = now - self.paused_at if self.paused_at else now - self.start_time
+            if self.paused_at:
+                delta = now - self.paused_at
+            else:
+                delta = now - self.start_time
             return self.accumulated_time_ms + int(delta.total_seconds() * 1000)
         return self.accumulated_time_ms
 
